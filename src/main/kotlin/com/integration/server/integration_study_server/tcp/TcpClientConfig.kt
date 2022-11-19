@@ -12,7 +12,7 @@ import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 
 @Configuration
-class TcpClientConfig {
+class TcpClientConfigV1 {
 
     @Bean
     fun outBound(): IntegrationFlow {
