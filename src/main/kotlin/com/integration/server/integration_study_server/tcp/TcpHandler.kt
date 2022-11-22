@@ -21,7 +21,7 @@ class TcpHandler(
     )
     fun handle(input : String) : String{
         println("_____active hello hander ${input}______")
-        return input
+        return "return $input hello"
         }
 
     @ServiceActivator(
@@ -30,7 +30,7 @@ class TcpHandler(
         )
     fun handle2(input : String) : String{
         println("_____active hello hander ${input}______")
-        return input
+        return "return $input bye"
     }
 }
 

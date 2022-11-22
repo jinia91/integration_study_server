@@ -8,7 +8,6 @@ import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.ip.dsl.Tcp
 import org.springframework.integration.ip.tcp.TcpInboundGateway
 import org.springframework.integration.router.HeaderValueRouter
-import org.springframework.integration.support.MessageBuilder
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageHeaders
 import org.springframework.messaging.support.GenericMessage
@@ -58,8 +57,13 @@ class TcpServerConfig{
 
     @Bean
     fun gateway(): TcpInboundGateway {
-        val nioServer = Tcp.netServer(9191)
-        val factory = nioServer.get()
+        val netServer = Tcp.netServer(9191)
+        val factory = netServer.get().apply {
+            isSingleUse = true
+            isSoKeepAlive = true
+            deserializer = StringLengthHeaderSerializer()
+            soTimeout = 0
+        }
         val inboundGateway = Tcp.inboundGateway(factory)
             .apply {
 //                requestChannel(service())
