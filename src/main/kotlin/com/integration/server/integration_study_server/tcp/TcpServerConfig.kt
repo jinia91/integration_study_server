@@ -1,12 +1,15 @@
 package com.integration.server.integration_study_server.tcp
 
+import StringLengthHeaderSerializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.integration.channel.DirectChannel
+import org.springframework.integration.channel.PublishSubscribeChannel
 import org.springframework.integration.dsl.IntegrationFlow
 import org.springframework.integration.dsl.IntegrationFlows
 import org.springframework.integration.ip.dsl.Tcp
 import org.springframework.integration.ip.tcp.TcpInboundGateway
+import org.springframework.integration.ip.tcp.connection.AbstractServerConnectionFactory
 import org.springframework.integration.router.HeaderValueRouter
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageHeaders
@@ -20,34 +23,32 @@ class TcpServerConfig{
 
         return IntegrationFlows.from(gateway)
             .filter<ByteArray>{
+                println("filter   " + Thread.currentThread())
+                println(String(it))
                 String(it)
                 true
             }
-
-                // header -> default 정보  'replyChannel(response())'
-
             .transform(Message::class.java) { message ->
                 val reqMsg = String(message.payload as ByteArray)
-                println("____active transformer $reqMsg")
+                println("____active transformer $reqMsg ${Thread.currentThread()}")
                 val substringHeader = reqMsg.substring(0, 4)
                 println(substringHeader)
                 val map = mutableMapOf<String, Any>()
                 map.putAll(message.headers)
-
-//                MessageBuilder.fromMessage(message).copyHeaders(message.headers).setHeader("type", "hello").build()
                 when (substringHeader) {
                     "0001" -> map["type"] = "hello"
-                    else -> map["type"] = "bye"
+                    "0002" -> map["type"] = "bye"
+                    else  -> map["type"] = "pubsub"
                 }
-                GenericMessage(message.payload, MessageHeaders(map))
+                GenericMessage(message.payload, MessageHeaders(map)).also { println("뿅") }
             }
             .route(
                 HeaderValueRouter("type").apply {
                     setChannelMapping("hello", "helloChannel")
                     setChannelMapping("bye", "byeChannel")
+                    setChannelMapping("pubsub", "pubsubChannel")
                 }
             )
-//            .channel(service())
             .get()
     }
 
@@ -58,10 +59,11 @@ class TcpServerConfig{
     @Bean
     fun gateway(): TcpInboundGateway {
         val netServer = Tcp.netServer(9191)
-        val factory = netServer.get().apply {
-            isSingleUse = true
+        val factory :AbstractServerConnectionFactory = netServer.get().apply {
+            isSingleUse = false
             isSoKeepAlive = true
             deserializer = StringLengthHeaderSerializer()
+            serializer = StringLengthHeaderSerializer()
             soTimeout = 0
         }
         val inboundGateway = Tcp.inboundGateway(factory)
@@ -72,8 +74,11 @@ class TcpServerConfig{
         return inboundGateway.get()
     }
 
+//    @Bean
+//    fun serializer()
+
     @Bean
-    fun service() = DirectChannel()
+    fun pubsubChannel() = PublishSubscribeChannel()
 
     @Bean
     fun response() = DirectChannel()
